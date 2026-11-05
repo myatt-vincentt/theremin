@@ -4,7 +4,8 @@
 //          sound fades out.
 //   Keys   A S D F G H J K play C D E F G A B C while held, at a medium
 //          volume; ↑ ↓ make it louder or softer.
-// Works in every view (the antenna's side follows the view).
+// Works in every view (the antenna's side follows the view). While a drag or
+// a key plays, it plays over the hands.
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import { Vector3 } from "three";
@@ -25,6 +26,11 @@ const antennaMid = PITCH_AXIS.bottom.clone().lerp(PITCH_AXIS.top, 0.4);
 
 /** What the keys hold: the notes pressed (latest last) and their volume. */
 export const keys = { held: [] as string[], volume: KEY_VOLUME.start };
+/** A drag is playing now. */
+export const drag = { active: false };
+
+/** A drag or a key is playing now (the hands wait for them). */
+export const pointerPlaying = () => drag.active || keys.held.length > 0;
 
 export const PointerInput = () => {
   const camera = useThree((s) => s.camera);
@@ -56,6 +62,7 @@ export const PointerInput = () => {
     const onDown = (e: PointerEvent) => {
       if (onControl(e) || !theremin.entered || dragging !== null) return;
       dragging = e.pointerId;
+      drag.active = true;
       fromPointer(e);
     };
     const onMove = (e: PointerEvent) => {
@@ -65,6 +72,7 @@ export const PointerInput = () => {
     const onUp = (e: PointerEvent) => {
       if (e.pointerId !== dragging) return;
       dragging = null;
+      drag.active = false;
       if (keys.held.length === 0) release("pointer");
     };
 
@@ -111,6 +119,7 @@ export const PointerInput = () => {
     const onBlur = () => {
       keys.held = [];
       dragging = null;
+      drag.active = false;
       release("keys");
     };
     window.addEventListener("pointerdown", onDown);

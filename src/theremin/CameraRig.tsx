@@ -12,6 +12,7 @@ import { PerspectiveCamera, Vector3 } from "three";
 
 import {
   keepPoints,
+  phoneness,
   viewMargins,
   viewPose,
   VIEWS,
@@ -34,10 +35,16 @@ const newPose = (): CameraPose => ({
 /** Development only: a fixed camera instead of the views (null = the views). */
 export const cameraOverride: { pose: CameraPose | null } = { pose: null };
 
-const KEEP = Object.fromEntries(VIEWS.map((v) => [v, keepPoints(v)])) as Record<
-  View,
-  Vector3[]
->;
+/** The points each view keeps on screen: on a wide screen, and on a tall one. */
+const KEEP = {
+  wide: Object.fromEntries(VIEWS.map((v) => [v, keepPoints(v)])) as Record<
+    View,
+    Vector3[]
+  >,
+  tall: Object.fromEntries(
+    VIEWS.map((v) => [v, keepPoints(v, true)]),
+  ) as Record<View, Vector3[]>,
+};
 
 const probe = new PerspectiveCamera();
 const local = new Vector3();
@@ -58,7 +65,8 @@ const fitStep = (
   probe.updateMatrixWorld(true);
   // Each point up the screen (as a tangent), and how high it may go: under
   // the corner camera where the corner camera is above it.
-  const pts = KEEP[view].map((p) => {
+  const keep = phoneness(aspect) >= 0.5 ? KEEP.tall : KEEP.wide;
+  const pts = keep[view].map((p) => {
     local.copy(p).applyMatrix4(probe.matrixWorldInverse);
     const depth = Math.max(0.05, -local.z);
     const x = local.x / depth;

@@ -161,7 +161,7 @@ const CLOSE = {
   phone: {
     pos: [-0.08, 1.58, 0.46],
     target: [-0.17, 1.13, -0.28],
-    hfov: hfovFromV(73.74, P),
+    hfov: hfovFromV(64, P),
   },
 };
 const VIEW_POSES = { front: FRONT, player: PLAYER, close: CLOSE };
@@ -192,17 +192,26 @@ const v3 = (x: number, y: number, z: number) => new Vector3(x, y, z);
 /**
  * The points a view keeps on screen. Front: the cabinet, the antenna's top,
  * the rings and the loop with its hand. Player: the cabinet, the rings and the
- * loop. Close: the pitch rings and the panel from its left end to the dial
- * (the right end may run off on a tall screen).
+ * loop. Close: the pitch rings, the antenna's top and the panel from its
+ * left end to the dial; on a tall screen (`phone`) tighter: the rings and
+ * the panel's left part (the antenna's top may run off).
  */
-export const keepPoints = (view: View): Vector3[] => {
+export const keepPoints = (view: View, phone = false): Vector3[] => {
   const ringOut = -0.3 - 0.19;
   const ringIn = -0.3 + 0.19;
+  if (view === "close" && phone)
+    return [
+      v3(ringOut, 1.25, -0.33),
+      v3(ringIn, 1.25, -0.33),
+      v3(-0.3, 1.38, -0.33),
+      v3(-0.3, 0.87, -0.15),
+      v3(0.05, 0.87, -0.15),
+    ];
   if (view === "close")
     return [
       v3(ringOut, 1.25, -0.33),
       v3(ringIn, 1.25, -0.33),
-      v3(-0.3, 1.36, -0.33),
+      v3(-0.3, 1.63, -0.33),
       v3(-0.17, 1.4, -0.42),
       v3(-0.35, 0.87, -0.15),
       v3(0.12, 0.87, -0.15),

@@ -3,8 +3,11 @@
 //     higher notes, further away for lower ones
 //   - the volume hand (your left, the same hand mirrored) palm down over the
 //     loop: higher for louder, resting on the loop when silent
-// They follow what is played (a drag, the keys, and later your own hands),
-// and breathe a little when still.
+// They follow what is played (your hands, a drag or the keys) and breathe a
+// little when still. Each opens while it plays, rests relaxed when idle, and
+// the volume hand makes a fist when you mute. Seen from the player's side the
+// volume hand turns a little on its edge, so it does not read as a flat
+// shape from the back.
 //
 // The model holds one right hand in three poses with the same vertices
 // (relaxed, open, fist); they become one mesh whose shape blends between
@@ -19,11 +22,15 @@ import {
   Mesh,
   MeshBasicMaterial,
   DoubleSide,
+  Euler,
+  Quaternion,
   Vector3,
   type Object3D,
 } from "three";
 
+import { ease, GLIDE as VIEW_GLIDE } from "./CameraRig";
 import { ghostMaterial } from "./ghost";
+import { hands as yours } from "./Hands";
 import {
   COLOURS,
   HAND_REF,
@@ -41,6 +48,16 @@ const TOWARDS = ["ThereminHand_Open", "ThereminHand_Fist"] as const;
 export const VOLUME_OPEN = 0.2;
 /** Breathing when still: how far (m) and how slowly (s per breath). */
 const BREATH = { reach: 0.003, period: 3.6 };
+/** While playing each hand opens this far (share of Open); poses change at this rate (1/s). */
+const PLAYING_OPEN = { pitch: 0.75, volume: 0.8 };
+const POSE_RATE = 10;
+/** Sounding above this volume counts as playing. */
+const PLAYING = 0.03;
+/**
+ * In Player the volume hand turns about its own axes (degrees: x tips the
+ * fingers up, y rolls it onto its edge), blended in as the view glides.
+ */
+export const PLAYER_TILT = { x: -20, y: 40, z: 0 };
 
 /**
  * A pose's vertices (and normals) in the base pose's own frame: each pose
@@ -154,16 +171,56 @@ export const GhostHands = () => {
     };
   }, [src]);
 
-  useFrame(() => {
+  const st = useMemo(
+    () => ({
+      view: theremin.view,
+      at: -10,
+      from: theremin.view === "player" ? 1 : 0,
+      player: theremin.view === "player" ? 1 : 0,
+      tilt: new Quaternion(),
+      euler: new Euler(),
+    }),
+    [],
+  );
+
+  useFrame((_, rawDt) => {
     if (!hands) return;
+    const dt = Math.min(rawDt, 0.1);
     const now = performance.now() / 1000;
     const b = BREATH.reach * Math.sin((2 * Math.PI * now) / BREATH.period);
     pitchHandPos(theremin.shownPitch, hands.pitch.holder.position);
     hands.pitch.holder.position.y += b;
     volumeHandPos(theremin.shownVolume, hands.volume.holder.position);
     hands.volume.holder.position.y += b * 0.6;
-    const vi = hands.volume.mesh.morphTargetInfluences;
-    if (vi) vi[0] = VOLUME_OPEN;
+
+    // The poses: open while playing, relaxed when idle, a fist on mute.
+    const playing = theremin.shownVolume > PLAYING;
+    const k = 1 - Math.exp(-POSE_RATE * dt);
+    const blend = (m: Mesh, open: number, fist: number) => {
+      const inf = m.morphTargetInfluences;
+      if (!inf) return;
+      inf[0] += (open - inf[0]) * k;
+      inf[1] += (fist - inf[1]) * k;
+    };
+    blend(hands.pitch.mesh, playing ? PLAYING_OPEN.pitch : 0, 0);
+    const muted = yours.volumeTracked && yours.muted;
+    let volumeOpen = playing ? PLAYING_OPEN.volume : VOLUME_OPEN;
+    if (muted) volumeOpen = 0;
+    blend(hands.volume.mesh, volumeOpen, muted ? 1 : 0);
+
+    // In Player the volume hand turns onto its edge.
+    if (st.view !== theremin.view) {
+      st.view = theremin.view;
+      st.at = now;
+      st.from = st.player;
+    }
+    const goal = theremin.view === "player" ? 1 : 0;
+    st.player = st.from + (goal - st.from) * ease((now - st.at) / VIEW_GLIDE);
+    const d = (Math.PI / 180) * st.player;
+    st.tilt.setFromEuler(
+      st.euler.set(PLAYER_TILT.x * d, PLAYER_TILT.y * d, PLAYER_TILT.z * d),
+    );
+    hands.volume.holder.quaternion.copy(HAND_REF.volume.quat).multiply(st.tilt);
   });
 
   // The hands go into the room once they are on screen.

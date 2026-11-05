@@ -1,5 +1,5 @@
 // Theremin: a theremin in a recording studio, played in the air. Your right
-// hand nearer the antenna plays higher; your left hand higher over the loop
+// hand further towards the antenna's side plays higher; your left hand higher
 // plays louder. Two gold ghost hands play with you; rings around the
 // antenna, a halo over the loop and a wave rising from the cabinet show the
 // sound. A drag on the stage and the keys play too. Your camera sits small in
@@ -8,6 +8,8 @@
 //   CameraRig.tsx     the views (front, player, close), fitted to the screen (layout.ts)
 //   Studio.tsx        the room and its light, day and night; the LEDs glow in the note's colour
 //   Theremin.tsx      the theremin, its meter, the pitch rings, the volume halo and the wave
+//   Hands.tsx         your hands: the pitch hand across the picture, the
+//                     volume hand up it, a fist mutes (handPlay.ts, fingers.ts)
 //   GhostHands.tsx    the two gold ghost hands
 //   PointerInput.tsx  dragging on the stage, and the keys
 //   CameraFrame.tsx   your camera in the corner
@@ -17,15 +19,20 @@
 //   Home.tsx          the home page (Start), shown over the scene while it loads
 import { Suspense, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
+import { HandTracker } from "@vincentt-xr/sdk/tracking";
 
 import { CameraFrame } from "./CameraFrame";
 import { CameraRig } from "./CameraRig";
 import { GhostHands } from "./GhostHands";
+import { Hands } from "./Hands";
 import { Hud } from "./Hud";
 import { PointerInput } from "./PointerInput";
 import { theremin, tick, useThereminVersion } from "./state";
 import { Studio } from "./Studio";
 import { Theremin } from "./Theremin";
+
+/** Hand readings per second. */
+const HAND_FPS = 30;
 
 /** Mounts once everything above it has loaded (the home page waits for it). */
 const Loaded = () => {
@@ -54,6 +61,8 @@ export const ThereminScene = () => {
         <GhostHands />
         <Loaded />
       </Suspense>
+      {theremin.started ? <HandTracker targetFps={HAND_FPS} /> : null}
+      <Hands />
       <CameraFrame />
       <PointerInput />
       <Hud />

@@ -5,6 +5,8 @@
 //     Scale), the view (front, player, close), day / night, and how to play.
 //     A small label shows over a button on hover, or for a moment after a tap.
 //   - the note readout just above the dock: the note sounding now
+//   - thin guides over the corner camera: the pitch ruler and the volume bar
+//     (CameraGuides.tsx)
 //   - the how-to-play steps (after Start, or from the dock)
 import {
   useEffect,
@@ -17,6 +19,7 @@ import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useXRReady } from "@vincentt-xr/sdk/low-level";
 
+import { CameraGuides } from "./CameraGuides";
 import {
   COLOURS,
   DOCK_BOTTOM,
@@ -234,42 +237,39 @@ const PicScale = () => (
 type Step = { key: string; pic: ReactNode; text: ReactNode; tint?: string };
 const STEPS: Step[] = [
   {
-    key: "across",
+    key: "pitch",
     pic: <PicAcross />,
-    text: "Drag on the stage: towards the antenna plays higher",
+    text: "Right hand: move toward the antenna side for higher notes",
     tint: COLOURS.teal,
   },
   {
-    key: "up",
+    key: "volume",
     pic: <PicUp />,
-    text: "Higher up is louder. Let go to stop",
+    text: "Left hand: raise to play louder, lower or fist to go quiet",
     tint: COLOURS.ghost,
-  },
-  {
-    key: "keys",
-    pic: <PicKeys />,
-    text: (
-      <>
-        Or hold{" "}
-        <span className="vl-keys">
-          <kbd>A</kbd>
-          <kbd>S</kbd>
-          <kbd>D</kbd>
-          <kbd>…</kbd>
-          <kbd>K</kbd>
-        </span>{" "}
-        for C to C, ↑ ↓ for volume
-      </>
-    ),
   },
   {
     key: "scale",
     pic: <PicScale />,
-    text: "Scale snaps to the notes of a tune; Free glides through them all",
+    text: "Scale mode snaps to notes; Free glides",
+  },
+  {
+    key: "touch",
+    pic: <PicKeys />,
+    text: (
+      <>
+        Or drag on the stage, or hold{" "}
+        <span className="vl-keys">
+          <kbd>A</kbd>
+          <kbd>…</kbd>
+          <kbd>K</kbd>
+        </span>{" "}
+        (↑ ↓ volume)
+      </>
+    ),
   },
 ];
 
-/** The corner's words when there is no camera. */
 const NO_CAMERA = "No camera: drag on the stage, or hold A to K";
 const MODE_MARK: Record<PitchMode, string> = { free: "F", scale: "S" };
 
@@ -407,6 +407,11 @@ export const Hud = () => {
             <span>{NO_CAMERA}</span>
           </div>
         ) : null}
+        <CameraGuides
+          rect={frame}
+          screen={{ width, height }}
+          shown={theremin.started && !hidden && !noCamera}
+        />
         <button
           type="button"
           data-hud="camera"

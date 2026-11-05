@@ -10,9 +10,12 @@
 //     jewel) glows with the level
 // The theremin does not move between views; only the camera does.
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import {
   AdditiveBlending,
+  RepeatWrapping,
+  SRGBColorSpace,
+  type Texture,
   Color,
   DoubleSide,
   Group,
@@ -39,7 +42,7 @@ import {
   VOLUME_REACH,
 } from "./layout";
 import { dressModel } from "./look";
-import { MODELS, useOptionalModel } from "./models";
+import { MODELS, useOptionalModel, useOptionalTexture } from "./models";
 import { theremin } from "./state";
 
 /** Everything the rest of the scene reads about the theremin. */
@@ -221,7 +224,13 @@ type Parts = {
 };
 
 /** The meter's glowing materials get their own copies (their glow follows the level). */
-const dressTheremin = (src: Object3D): Parts => {
+/**
+ * The cabinet's walnut: a fine, straight grain (its own texture, in place of
+ * the model's), this many times along and across the wood.
+ */
+const WALNUT = { repeat: [1, 1] as [number, number], anisotropy: 8 };
+
+const dressTheremin = (src: Object3D, walnut: Texture | null): Parts => {
   const body = src.clone(true);
   body.position.set(0, 0, 0);
   body.quaternion.identity();
@@ -234,6 +243,16 @@ const dressTheremin = (src: Object3D): Parts => {
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     const next = mats.map((mt) => {
       const std = mt as MeshStandardMaterial;
+      if (std.name === "Walnut" && walnut) {
+        let m = made.get(std);
+        if (!m) {
+          m = std.clone();
+          m.map = walnut;
+          m.needsUpdate = true;
+          made.set(std, m);
+        }
+        return m;
+      }
       if (std.name === "Theremin_DialGlass") {
         // The glass lets the shadows through and casts none.
         mesh.castShadow = false;
@@ -260,7 +279,23 @@ const dressTheremin = (src: Object3D): Parts => {
 
 export const Theremin = () => {
   const src = useOptionalModel(MODELS.theremin);
-  const parts = useMemo(() => (src ? dressTheremin(src) : null), [src]);
+  const walnutMap = useOptionalTexture(MODELS.walnut);
+  const gl = useThree((st) => st.gl);
+  const parts = useMemo(() => {
+    if (!src) return null;
+    if (!walnutMap) return dressTheremin(src, null);
+    walnutMap.colorSpace = SRGBColorSpace;
+    walnutMap.flipY = false;
+    walnutMap.wrapS = RepeatWrapping;
+    walnutMap.wrapT = RepeatWrapping;
+    walnutMap.repeat.set(...WALNUT.repeat);
+    walnutMap.anisotropy = Math.min(
+      WALNUT.anisotropy,
+      gl.capabilities.getMaxAnisotropy(),
+    );
+    walnutMap.needsUpdate = true;
+    return dressTheremin(src, walnutMap);
+  }, [src, walnutMap, gl]);
 
   const teal = useMemo(() => new Color(COLOURS.teal), []);
   const gold = useMemo(() => new Color(COLOURS.gold), []);

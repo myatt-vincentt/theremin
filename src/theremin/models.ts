@@ -1,6 +1,6 @@
 // The 3D models and bakes the scene loads (all under public/models/), and a
 // loader that hands back null when a model isn't there.
-import type { Object3D } from "three";
+import { TextureLoader, type Object3D, type Texture } from "three";
 // eslint-disable-next-line import/extensions
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // eslint-disable-next-line import/extensions
@@ -9,6 +9,8 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 export const MODELS = {
   /** The theremin (with its stand and antennas). */
   theremin: "/models/theremin.glb",
+  /** The cabinet's walnut grain (fine and straight; replaces the model's own). */
+  walnut: "/models/theremin-walnut.webp",
   /** The ghost hand (a right hand in three poses; mirrored for the left). */
   ghostHand: "/models/ghost-hand-theremin.glb",
   /** The recording studio, its baked light and its light probe. */
@@ -58,4 +60,36 @@ export const useOptionalModel = (url: string): Object3D | null => {
   // eslint-disable-next-line @typescript-eslint/no-throw-literal
   if (entry.result === undefined) throw entry.promise;
   return entry.result?.scene ?? null;
+};
+
+const textures = new Map<
+  string,
+  { promise: Promise<void>; result?: Texture | null }
+>();
+
+/**
+ * A texture, or null when the file isn't there (the model's own is kept).
+ * Suspends while it loads.
+ */
+export const useOptionalTexture = (url: string): Texture | null => {
+  let entry = textures.get(url);
+  if (!entry) {
+    const e: { promise: Promise<void>; result?: Texture | null } = {
+      promise: Promise.resolve(),
+    };
+    e.promise = new TextureLoader()
+      .loadAsync(url)
+      .then((t) => {
+        e.result = t;
+      })
+      .catch(() => {
+        e.result = null;
+      });
+    textures.set(url, e);
+    entry = e;
+  }
+  // Suspense: React waits for the promise, then renders again.
+  // eslint-disable-next-line @typescript-eslint/no-throw-literal
+  if (entry.result === undefined) throw entry.promise;
+  return entry.result;
 };
