@@ -1,0 +1,10 @@
+{
+  "title": "Theremin",
+  "description": "Play a theremin in the air: your right hand nearer the antenna plays higher, your left hand higher over the loop plays louder, in a 3D studio with lights that glow in the colour of your note",
+  "url": "https://theremin.vincentt.app",
+  "image": "/images/og-default.jpg",
+  "imageAlt": "Theremin — a camera experience built with Vincentt",
+  "imageWidth": 1200,
+  "imageHeight": 630,
+  "imageType": "image/jpeg"
+}
