@@ -1,10 +1,11 @@
 // The page UI, minimal, on Night glass:
 //   - your camera, top right (CameraFrame.tsx): tap it to tuck it away; a
 //     small camera button then sits in the corner to bring it back
-//   - one floating dock, bottom centre, icons only: the pitch mode (Free or
-//     Scale), the view (front, player, close), day / night, and how to play.
+//   - one floating dock, bottom centre, icons only: songs (opens the songs
+//     card; while a song runs, stops it), the pitch mode (Free or Scale), the view (front, player, close), day / night, and how to play.
 //     A small label shows over a button on hover, or for a moment after a tap.
 //   - the note readout just above the dock: the note sounding now
+//   - the songs card, the note lane card and the finish card (SongUI.tsx)
 //   - thin guides over the corner camera: the pitch ruler and the volume bar
 //     (CameraGuides.tsx)
 //   - the how-to-play steps (after Start, or from the dock)
@@ -20,6 +21,8 @@ import { useThree } from "@react-three/fiber";
 import { useXRReady } from "@vincentt-xr/sdk/low-level";
 
 import { CameraGuides } from "./CameraGuides";
+import { stopSong } from "./SongPlayer";
+import { NoteIcon, SONG_CSS, SongUI, StopIcon } from "./SongUI";
 import {
   COLOURS,
   DOCK_BOTTOM,
@@ -264,7 +267,7 @@ const STEPS: Step[] = [
           <kbd>…</kbd>
           <kbd>K</kbd>
         </span>{" "}
-        (↑ ↓ volume)
+        (Shift: octave up; ↑ ↓ volume)
       </>
     ),
   },
@@ -347,6 +350,26 @@ export const Hud = () => {
   const quiet = useQuiet();
 
   const buttons: DockButton[] = [
+    theremin.session
+      ? {
+          id: "songs",
+          label: "Stop song",
+          icon: <StopIcon />,
+          on: true,
+          act: stopSong,
+        }
+      : {
+          id: "songs",
+          label: "Songs",
+          icon: <NoteIcon />,
+          on: theremin.songCard,
+          act: () => {
+            theremin.songCard = !theremin.songCard;
+            theremin.finish = null;
+            closeHowTo();
+            theremin.changed();
+          },
+        },
     {
       id: "mode",
       label: `Pitch: ${PITCH_MODE_LABEL[theremin.mode]}`,
@@ -378,6 +401,7 @@ export const Hud = () => {
           return;
         }
         theremin.howTo = true;
+        theremin.songCard = false;
         theremin.changed();
       },
     },
@@ -391,6 +415,7 @@ export const Hud = () => {
       style={{ pointerEvents: "none" }}
     >
       <style>{CSS}</style>
+      <style>{SONG_CSS}</style>
       <div className="vl-root">
         {noCamera ? (
           <div
@@ -476,6 +501,8 @@ export const Hud = () => {
             </div>
           </div>
         ) : null}
+
+        {theremin.entered ? <SongUI width={width} height={height} /> : null}
 
         {theremin.entered ? (
           <div

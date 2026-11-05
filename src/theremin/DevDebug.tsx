@@ -4,6 +4,7 @@
 //   __theremin.play(0.5, 0.7)      pitch 0..1, volume 0..1 (held until release)
 //   __theremin.release()           the sound fades out
 //   __theremin.mode("free")        "free" or "scale"
+//   __theremin.song("ode", "learn") start a song ("learn" or "play"); __theremin.stopSong()
 //   __theremin.view("player"), __theremin.night(true)
 //   __theremin.look([x, y, z], [tx, ty, tz], fov)   a fixed camera (null: back)
 //
@@ -20,6 +21,8 @@ import { cameraOverride } from "./CameraRig";
 import type { View } from "./layout";
 import type { PitchMode } from "./pitch";
 import { rig } from "./Theremin";
+import { startSong, stopSong } from "./SongPlayer";
+import type { SongMode } from "./session";
 import { play, release, setMode, setNight, setView, theremin } from "./state";
 
 /** The ?debug readout: a plain text box, refreshed a few times a second. */
@@ -53,6 +56,7 @@ const useReadout = () => {
         `pitch ${meter.hz.toFixed(1)} Hz  ${theremin.note}  (${theremin.pitch.toFixed(2)})`,
         `volume ${theremin.volume.toFixed(2)}  hand asks ${hands.level.toFixed(2)}  one hand ${yes(hands.oneHand)}`,
         `zone ${hands.zone.lo.toFixed(2)} … ${hands.zone.hi.toFixed(2)}  mute ${yes(hands.muted)}`,
+        `song ${theremin.session ? `${theremin.session.song.id} ${theremin.session.mode} note ${theremin.session.next}/${theremin.session.song.notes.length}` : "-"}  target ${theremin.target ?? "-"}`,
         `sound ${sound.unlocked ? "on" : "off"}  level ${sound.last.level.toFixed(2)}  vibrato ${meter.vibrato.toFixed(1)} c`,
       ].join("\n");
     }, 200);
@@ -82,6 +86,8 @@ const DevDebug = () => {
       play: (pitch = 0.5, volume = 0.7) => play(pitch, volume, "pointer"),
       release: () => release("pointer"),
       mode: (m: PitchMode) => setMode(m),
+      song: (id: string, m: SongMode = "learn") => startSong(id, m),
+      stopSong,
       view: (v: View) => setView(v),
       night: (on: boolean) => setNight(on),
       look(pos: number[] | null, target: number[] = [0, 1.1, -0.3], fov = 40) {

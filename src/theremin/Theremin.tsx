@@ -66,12 +66,23 @@ const RINGS = {
   tightest: 0.68,
   widest: 1.12,
   idle: 0.22,
+  songIdle: 0.55,
   pulse: 0.9,
   speed: [0.8, 3.2],
   tube: 2.2,
 };
 /** The halo: dim when silent, and how far it lifts with the hand (share of the hand's rise). */
 const HALO = { idle: 0.25, lift: 0.35 };
+/**
+ * In a song, a gold ring shows where the teal rings must close to for the
+ * note to play: it is ring `ring`, drawn at the target pitch's spacing (a
+ * little thicker), so the two meet when you play the note. It fades in and
+ * out over `fade` s.
+ */
+const TARGET_RING = { ring: 4, tube: 1.8, strength: 1.6, fade: 0.25 };
+/** The pitch (0..1) of a MIDI note in the range. */
+const pitchOfMidi = (midi: number) =>
+  Math.min(1, Math.max(0, (midi - 60) / 24));
 /**
  * The ribbon's wave: cycles along it (lowest … highest note), its width
  * (m, silent … loudest), and how fast it travels (radians / s, lowest …
@@ -348,8 +359,41 @@ export const Theremin = () => {
     halo.renderOrder = 6;
     group.add(halo);
     const ribbon = makeRibbon(teal, gold);
+    // The song's target ring (gold).
+    const tr = TARGET_RING.ring;
+    const targetMat = new MeshBasicMaterial({
+      color: new Color(COLOURS.ghost),
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const targetRing = new Mesh(
+      new TorusGeometry(
+        r.radii[tr],
+        r.tube(tr) * RINGS.tube * TARGET_RING.tube,
+        6,
+        128,
+      ),
+      targetMat,
+    );
+    targetRing.rotation.x = Math.PI / 2;
+    targetRing.renderOrder = 7;
+    targetRing.position.copy(local);
+    targetRing.visible = false;
+    group.add(targetRing);
     ribbon.forEach((s) => group.add(s.mesh));
-    return { group, rings, halo, haloMat, ribbon, ringLocal: local };
+    return {
+      group,
+      rings,
+      halo,
+      haloMat,
+      ribbon,
+      ringLocal: local,
+      targetRing,
+      targetMat,
+      targetPitch: 0.5,
+      targetShown: 0,
+    };
   }, [teal, gold]);
 
   const st = useRef({
@@ -385,7 +429,9 @@ export const Theremin = () => {
     const tight = lerp(RINGS.widest, RINGS.tightest, pitch);
     s.pulse += dt * lerp(RINGS.speed[0], RINGS.speed[1], pitch);
     const strength = dayNight(GLOW_STRENGTH.rings, n) * FIELD_SCALE.rings;
-    const lit = lerp(RINGS.idle, 1, Math.min(1, vol * 1.2));
+    // In a song the rings stay visible beside the gold target ring.
+    const idle = theremin.target !== null ? RINGS.songIdle : RINGS.idle;
+    const lit = lerp(idle, 1, Math.min(1, vol * 1.2));
     /* eslint-disable no-param-reassign */
     fx.rings.forEach((ring, k) => {
       const radius = ring.radius * tight;
@@ -399,6 +445,31 @@ export const Theremin = () => {
       ring.m.opacity = Math.min(1, ring.alpha * (0.6 + 0.8 * bright));
     });
     /* eslint-enable no-param-reassign */
+
+    // The song's target ring: gold, where the rings close to for its note.
+    const want = theremin.target !== null ? 1 : 0;
+    if (theremin.target !== null) {
+      const tp = pitchOfMidi(theremin.target);
+      // It glides to a new note (a jump from nothing is at once).
+      fx.targetPitch =
+        fx.targetShown < 0.02
+          ? tp
+          : fx.targetPitch + (tp - fx.targetPitch) * (1 - Math.exp(-dt / 0.08));
+    }
+    fx.targetShown = Math.min(
+      1,
+      Math.max(0, fx.targetShown + (want ? 1 : -1) * (dt / TARGET_RING.fade)),
+    );
+    const tt = lerp(RINGS.widest, RINGS.tightest, fx.targetPitch);
+    const tr = TARGET_RING.ring;
+    fx.targetRing.visible = fx.targetShown > 0.01;
+    fx.targetRing.scale.set(tt, tt, tt);
+    fx.targetRing.position.y =
+      fx.ringLocal.y - r.drop * tt * (r.radii[tr] - r.radii[0]);
+    fx.targetMat.opacity = 0.9 * fx.targetShown;
+    fx.targetMat.color
+      .set(COLOURS.ghost)
+      .multiplyScalar(TARGET_RING.strength * (1 - 0.3 * n));
 
     // The halo.
     const h = FIELDS.halo;

@@ -2,8 +2,9 @@
 //   Drag   anywhere on the stage: across is the pitch (towards the antenna's
 //          side of the screen is higher), up is louder. Let go and the
 //          sound fades out.
-//   Keys   A S D F G H J K play C D E F G A B C while held, at a medium
-//          volume; ↑ ↓ make it louder or softer.
+//   Keys   A S D F G H J K play C D E F G A B C while held (C4 … C5; with
+//          Shift an octave up, C5 … C6), at a medium volume; ↑ ↓ make it
+//          louder or softer. A key plays its note exactly (songs too).
 // Works in every view (the antenna's side follows the view). While a drag or
 // a key plays, it plays over the hands.
 import { useEffect } from "react";
@@ -25,7 +26,12 @@ const onControl = (e: Event) => {
 const antennaMid = PITCH_AXIS.bottom.clone().lerp(PITCH_AXIS.top, 0.4);
 
 /** What the keys hold: the notes pressed (latest last) and their volume. */
-export const keys = { held: [] as string[], volume: KEY_VOLUME.start };
+export const keys = {
+  held: [] as string[],
+  /** Each held key's note (MIDI; Shift at the press: an octave up). */
+  midi: {} as Record<string, number>,
+  volume: KEY_VOLUME.start,
+};
 /** A drag is playing now. */
 export const drag = { active: false };
 
@@ -82,7 +88,11 @@ export const PointerInput = () => {
         if (dragging === null) release("keys");
         return;
       }
-      play(midiToPitch(KEY_NOTES[code]), keys.volume, "keys");
+      play(
+        midiToPitch(keys.midi[code] ?? KEY_NOTES[code]),
+        keys.volume,
+        "keys",
+      );
     };
     const typing = (e: KeyboardEvent) =>
       e.metaKey ||
@@ -96,6 +106,7 @@ export const PointerInput = () => {
         if (e.repeat) return;
         keys.held = keys.held.filter((k) => k !== e.code);
         keys.held.push(e.code);
+        keys.midi[e.code] = KEY_NOTES[e.code] + (e.shiftKey ? 12 : 0);
         playKey();
         return;
       }

@@ -2,7 +2,8 @@
 // your hands play: a pitch ruler across the right half of the picture (a
 // tick at each note of C major, named in Scale; a dot at the pitch sounding)
 // and a volume bar up the left side (filled to the volume). Subtle: teal and
-// gold, mostly see-through. Drawn in the picture's own frame (the same cover
+// gold, mostly see-through. In a song the note to play glows gold on the
+// ruler, so you see where to move your right hand. Drawn in the picture's own frame (the same cover
 // crop as the corner camera), so a tick sits where your hand plays that note.
 import { useEffect, useRef } from "react";
 
@@ -13,7 +14,7 @@ import { noteName, SCALE_NOTES, LOW_MIDI, HIGH_MIDI } from "./pitch";
 import { theremin } from "./state";
 
 /** How see-through the guides are; the ruler's height on the picture, the bar's place across the panel (shares). */
-const GUIDE = { alpha: 0.4, dot: 0.85, rulerY: 0.9, barX: 0.07 };
+const GUIDE = { alpha: 0.4, dot: 0.85, target: 0.95, rulerY: 0.9, barX: 0.07 };
 
 /** The same crop as the corner camera's (CameraFrame.tsx): picture → panel. */
 const cropMid = (k: number) => Math.min(0.5 + 0.12, 1 - 0.5 * k);
@@ -98,6 +99,35 @@ export const CameraGuides = ({
         if (scale)
           g.fillText(noteName(m).replace(/\d/, ""), p.x, p.y - len - 2 * dpr);
       });
+      // In a song, the note to play glows gold on the ruler.
+      if (theremin.target !== null) {
+        const p = at(xOf(theremin.target), GUIDE.rulerY);
+        g.save();
+        g.globalAlpha = GUIDE.target;
+        g.strokeStyle = COLOURS.ghost;
+        g.fillStyle = COLOURS.ghost;
+        g.shadowColor = COLOURS.ghostGlow;
+        g.shadowBlur = 8 * dpr;
+        g.lineWidth = 3 * dpr;
+        g.beginPath();
+        g.moveTo(p.x, p.y - 16 * dpr);
+        g.lineTo(p.x, p.y + 5 * dpr);
+        g.stroke();
+        // Its name on a small dark pill, so it reads over a hand.
+        const label = noteName(theremin.target).replace(/\d/, "");
+        g.shadowBlur = 0;
+        g.fillStyle = "rgb(20 20 24 / .75)";
+        g.beginPath();
+        g.arc(p.x, p.y - 23 * dpr, 6.5 * dpr, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = COLOURS.ghost;
+        g.font = `700 ${Math.round(9 * dpr)}px system-ui, -apple-system, sans-serif`;
+        g.textBaseline = "middle";
+        g.fillText(label, p.x, p.y - 22.5 * dpr);
+        g.textBaseline = "alphabetic";
+        g.restore();
+        g.fillStyle = COLOURS.teal;
+      }
       // The pitch sounding.
       const sounding = performance.now() / 1000 - theremin.playedAt < 0.3;
       const d = at(xOf(theremin.midi), GUIDE.rulerY);

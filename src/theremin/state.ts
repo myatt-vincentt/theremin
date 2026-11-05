@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 
 import { sound } from "./audio";
 import { VIEWS, type View } from "./layout";
+import type { Session, SongMode } from "./session";
 import {
   noteName,
   PITCH_MODES,
@@ -71,6 +72,25 @@ export const theremin = {
   howToUntil: null as number | null,
   /** After the first card: the dock's one pulse (performance.now() ms). */
   dockPulseAt: null as number | null,
+
+  // Songs.
+  /** The songs card is open. */
+  songCard: false,
+  /** Play runs slower (0.75×). */
+  slow: false,
+  /** The song being learnt or played (null: free play). */
+  session: null as Session | null,
+  /** The note to play now in the song (MIDI), or null. */
+  target: null as number | null,
+  /** A song just finished: its stars (performance.now() ms). */
+  finish: null as {
+    id: string;
+    mode: SongMode;
+    stars: number;
+    at: number;
+  } | null,
+  /** The latest note that counted (performance.now() ms; seq to replay). */
+  fx: { goodAt: -1e9, goodSeq: 0, perfect: false },
   changed() {
     version += 1;
     listeners.forEach((l) => l());

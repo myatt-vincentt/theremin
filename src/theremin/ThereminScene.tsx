@@ -14,6 +14,8 @@
 //   PointerInput.tsx  dragging on the stage, and the keys
 //   CameraFrame.tsx   your camera in the corner
 //   Hud.tsx           the bottom dock, the note readout, how to play
+//   SongPlayer.tsx    songs to learn and play (session.ts, songs.ts, backing.ts;
+//                     the cards in SongUI.tsx)
 //   audio.ts          the voice made in code (a warm sine, vibrato, glide, a small room)
 //   pitch.ts          pitch and volume: the range, the scale, the note names
 //   Home.tsx          the home page (Start), shown over the scene while it loads
@@ -27,6 +29,7 @@ import { GhostHands } from "./GhostHands";
 import { Hands } from "./Hands";
 import { Hud } from "./Hud";
 import { PointerInput } from "./PointerInput";
+import { SongPlayer } from "./SongPlayer";
 import { theremin, tick, useThereminVersion } from "./state";
 import { Studio } from "./Studio";
 import { Theremin } from "./Theremin";
@@ -65,6 +68,7 @@ export const ThereminScene = () => {
       <Hands />
       <CameraFrame />
       <PointerInput />
+      <SongPlayer />
       <Hud />
     </>
   );

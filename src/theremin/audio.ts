@@ -34,6 +34,8 @@ let osc: OscillatorNode | null = null;
 let amp: GainNode | null = null;
 let lfo: OscillatorNode | null = null;
 let depth: GainNode | null = null;
+/** Where the voice (and the song backing) go: the room and the limiter follow. */
+let master: GainNode | null = null;
 let analyser: AnalyserNode | null = null;
 let wave: Float32Array | null = null;
 let bins: Uint8Array | null = null;
@@ -116,7 +118,7 @@ const makeContext = () => {
 
   amp = c.createGain();
   amp.gain.value = 0;
-  const master = c.createGain();
+  master = c.createGain();
   master.gain.value = MASTER;
   osc.connect(tone).connect(amp).connect(master);
 
@@ -171,6 +173,11 @@ export const sound = {
 
   get unlocked() {
     return unlocked;
+  },
+
+  /** The audio clock and the output a backing joins (null before the sound is on). */
+  audio() {
+    return ctx && master && unlocked ? { ctx, master } : null;
   },
 
   /**
